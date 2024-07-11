@@ -17,7 +17,7 @@ from dynamax.utils.distributions import nig_posterior_update
 from dynamax.utils.distributions import niw_posterior_update
 from dynamax.utils.bijectors import RealToPSDBijector
 from dynamax.utils.utils import pytree_sum
-from dynamax.utils.cluster import kmeans_centers_sklearn
+from dynamax.utils.cluster import kmeans_centers_sklearn, kmeans_centers_jax
 from typing import NamedTuple, Optional, Tuple, Union
 
 
@@ -71,7 +71,8 @@ class GaussianHMMEmissions(HMMEmissions):
                    emissions=None):
         if method.lower() == "kmeans":
             assert emissions is not None, "Need emissions to initialize the model with K-Means!"
-            _emission_means = kmeans_centers_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
+            # _emission_means = kmeans_centers_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
+            _emission_means, *_ = kmeans_centers_jax(emissions.reshape(-1, self.emission_dim), self.num_states, key)
             _emission_covs = jnp.tile(jnp.eye(self.emission_dim)[None, :, :], (self.num_states, 1, 1))
 
         elif method.lower() == "prior":
@@ -164,11 +165,7 @@ class DiagonalGaussianHMMEmissions(HMMEmissions):
 
         if method.lower() == "kmeans":
             assert emissions is not None, "Need emissions to initialize the model with K-Means!"
-            from sklearn.cluster import KMeans
-            key, subkey = jr.split(key)  # Create a random seed for SKLearn.
-            sklearn_key = jr.randint(subkey, shape=(), minval=0, maxval=2147483647)  # Max int32 value.
-            km = KMeans(self.num_states, random_state=int(sklearn_key)).fit(emissions.reshape(-1, self.emission_dim))
-            _emission_means = jnp.array(km.cluster_centers_)
+            _emission_means = kmeans_centers_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
             _emission_scale_diags = jnp.ones((self.num_states, self.emission_dim))
 
         elif method.lower() == "prior":
@@ -285,11 +282,7 @@ class SphericalGaussianHMMEmissions(HMMEmissions):
         """
         if method.lower() == "kmeans":
             assert emissions is not None, "Need emissions to initialize the model with K-Means!"
-            from sklearn.cluster import KMeans
-            key, subkey = jr.split(key)  # Create a random seed for SKLearn.
-            sklearn_key = jr.randint(subkey, shape=(), minval=0, maxval=2147483647)  # Max int32 value.
-            km = KMeans(self.num_states, random_state=int(sklearn_key)).fit(emissions.reshape(-1, self.emission_dim))
-            _emission_means = jnp.array(km.cluster_centers_)
+            _emission_means = kmeans_centers_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
             _emission_scales = jnp.ones((self.num_states,))
 
         elif method.lower() == "prior":
@@ -387,11 +380,7 @@ class SharedCovarianceGaussianHMMEmissions(HMMEmissions):
         """
         if method.lower() == "kmeans":
             assert emissions is not None, "Need emissions to initialize the model with K-Means!"
-            from sklearn.cluster import KMeans
-            key, subkey = jr.split(key)  # Create a random seed for SKLearn.
-            sklearn_key = jr.randint(subkey, shape=(), minval=0, maxval=2147483647)  # Max int32 value.
-            km = KMeans(self.num_states, random_state=int(sklearn_key)).fit(emissions.reshape(-1, self.emission_dim))
-            _emission_means = jnp.array(km.cluster_centers_)
+            _emission_means = kmeans_centers_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
             _emission_cov = jnp.eye(self.emission_dim)
 
         elif method.lower() == "prior":
@@ -509,11 +498,7 @@ class LowRankGaussianHMMEmissions(HMMEmissions):
         """
         if method.lower() == "kmeans":
             assert emissions is not None, "Need emissions to initialize the model with K-Means!"
-            from sklearn.cluster import KMeans
-            key, subkey = jr.split(key)  # Create a random seed for SKLearn.
-            sklearn_key = jr.randint(subkey, shape=(), minval=0, maxval=2147483647)  # Max int32 value.
-            km = KMeans(self.num_states, random_state=int(sklearn_key)).fit(emissions.reshape(-1, self.emission_dim))
-            _emission_means = jnp.array(km.cluster_centers_)
+            _emission_means = kmeans_centers_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
             _emission_cov_diag_factors = jnp.ones((self.num_states, self.emission_dim))
             _emission_cov_low_rank_factors = jnp.zeros((self.num_states, self.emission_dim, self.emission_rank))
 

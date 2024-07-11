@@ -48,14 +48,18 @@ class LogisticRegressionHMMEmissions(HMMEmissions):
         if method.lower() == "kmeans":
             assert emissions is not None, "Need emissions to initialize the model with K-Means!"
             assert inputs is not None, "Need inputs to initialize the model with K-Means!"
+
+            # GHD: This is going to be slightly more complex to refactor
             from sklearn.cluster import KMeans
 
             flat_emissions = emissions.reshape(-1,)
             flat_inputs = inputs.reshape(-1, self.input_dim)
+
             key, subkey = jr.split(key)  # Create a random seed for SKLearn.
             sklearn_key = jr.randint(subkey, shape=(), minval=0, maxval=2147483647)  # Max int32 value.
             km = KMeans(self.num_states, random_state=int(sklearn_key)).fit(flat_inputs)
             _emission_weights = jnp.zeros((self.num_states, self.input_dim))
+            # GHD: Pretty sure this line will not be traceable as flat_emissions[km.labels_ == k] shape depends on values
             _emission_biases = jnp.array([tfb.Sigmoid().inverse(flat_emissions[km.labels_ == k].mean())
                                           for k in range(self.num_states)])
 
