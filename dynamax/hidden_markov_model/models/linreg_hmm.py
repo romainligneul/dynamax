@@ -9,7 +9,7 @@ from dynamax.parameters import ParameterProperties
 from dynamax.types import Scalar
 from dynamax.utils.utils import pytree_sum
 from dynamax.utils.bijectors import RealToPSDBijector
-from dynamax.utils.cluster import kmeans_centers_sklearn
+from dynamax.utils.cluster import kmeans_sklearn
 from tensorflow_probability.substrates import jax as tfp
 from typing import NamedTuple, Optional, Tuple, Union
 
@@ -60,7 +60,7 @@ class LinearRegressionHMMEmissions(HMMEmissions):
         if method.lower() == "kmeans":
             assert emissions is not None, "Need emissions to initialize the model with K-Means!"
             _emission_weights = jnp.zeros((self.num_states, self.emission_dim, self.input_dim))
-            _emission_biases = kmeans_centers_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
+            _emission_biases, _ = kmeans_sklearn(self.num_states, emissions.reshape(-1, self.emission_dim), key)
             _emission_covs = jnp.tile(jnp.eye(self.emission_dim)[None, :, :], (self.num_states, 1, 1))
 
         elif method.lower() == "prior":
