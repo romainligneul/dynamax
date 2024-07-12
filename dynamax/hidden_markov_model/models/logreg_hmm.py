@@ -55,8 +55,13 @@ class LogisticRegressionHMMEmissions(HMMEmissions):
 
             _, km_labels = kmeans_sklearn(self.num_states, flat_inputs, key)
             _emission_weights = jnp.zeros((self.num_states, self.input_dim))
-            _emission_biases = jnp.array([tfb.Sigmoid().inverse(jnp.mean(flat_emissions, where=km_labels == k))
-                                          for k in range(self.num_states)])
+            cluster_emissions_means = jnp.array(
+                [jnp.mean(flat_emissions, where=km_labels == k) for k in range(self.num_states)]
+            )
+            cluster_emissions_means = jnp.where(
+                jnp.isnan(cluster_emissions_means), flat_emissions.mean(), cluster_emissions_means
+            )
+            _emission_biases = tfb.Sigmoid().inverse(cluster_emissions_means)
 
         elif method.lower() == "prior":
             # TODO: Use an MNIW prior
