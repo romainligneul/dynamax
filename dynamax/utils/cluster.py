@@ -5,7 +5,7 @@ from jax import numpy as jnp
 from jax import random as jr
 
 
-def kmeans_sklearn(k:int, X:Array, key:Array) -> Tuple[Array, Array]:
+def kmeans_sklearn(k: int, X: Array, key: Array) -> Tuple[Array, Array]:
     """
     Compute the cluster centers and assignments using the sklearn K-means algorithm.
 
@@ -33,7 +33,10 @@ class KMeansState(NamedTuple):
 
 
 def kmeans_centers_jax(
-    X: Array, k: int, key: Array = jr.PRNGKey(0), max_iters: int = 1000, 
+    X: Array,
+    k: int,
+    key: Array = jr.PRNGKey(0),
+    max_iters: int = 1000,
 ) -> KMeansState:
     """
     Perform k-means clustering using JAX.
@@ -51,13 +54,8 @@ def kmeans_centers_jax(
     """
 
     def _update_centroids(X: Array, assignments: Array):
-        group_counts = jnp.bincount(assignments, minlength=k, length=k)
-        group_sums = jnp.where(
-            assignments[:, None, None] == jnp.arange(k)[None, :, None],
-            X[:, None, :],
-            0.0,
-        ).sum(axis=0)
-        return group_sums / group_counts[:, None]
+        new_centroids = jnp.array([jnp.mean(X, axis=0, where=(assignments == i)[:, None]) for i in range(k)])
+        return new_centroids
 
     def _update_assignments(X, centroids):
         return jnp.argmin(jnp.linalg.norm(X[:, None] - centroids, axis=2), axis=1)
@@ -69,21 +67,29 @@ def kmeans_centers_jax(
         return KMeansState(new_centroids, new_assignments, centroids, carry.itr + 1)
 
     def cond(carry: KMeansState):
-        return jnp.any(carry.centroids != carry.prev_centroids) & (
-            carry.itr < max_iters
-        )
+        return jnp.any(carry.centroids != carry.prev_centroids) & (carry.itr < max_iters)
 
     def init():
-        # Initialize centroids as random data points
-        init_centroids = X[jr.choice(key, X.shape[0], (k,), replace=False)]
-        # TODO: Maybe I need to do one step of assignment before starting the loop
-        init_assignments = _update_assignments(X, init_centroids)
-        # Perform one iteration to update centroids
-        centroids = _update_centroids(X, init_assignments)
+        """kmeans++ initialization of centroids
+
+        Iteratively sample new centroids with probability proportional to the squared distance
+        from the closest centroid. This initialization method is more stable than random
+        initialization and leads to faster convergence.
+        Ref: Arthur, D., & Vassilvitskii, S. (2006).
+        """
+        centroids = jnp.zeros((k, X.shape[1]))
+        centroids = centroids.at[0, :].set(jr.choice(key, X))
+        for i in range(1, k):
+            squared_diffs = jnp.sum((X[:, None, :] - centroids[None, :i, :]) ** 2, axis=2)
+            min_squared_dists = jnp.min(squared_diffs, axis=1)
+            probs = min_squared_dists / jnp.sum(min_squared_dists)
+            centroids = centroids.at[i, :].set(jr.choice(key, X, p=probs))
         assignments = _update_assignments(X, centroids)
-        return KMeansState(centroids, assignments, init_centroids, 0)
+        # Perform one iteration to update centroids
+        updated_centroids = _update_centroids(X, assignments)
+        updated_assignments = _update_assignments(X, updated_centroids)
+        return KMeansState(updated_centroids, updated_assignments, centroids, 1)
 
     state = lax.while_loop(cond, body, init())
 
     return state
-
