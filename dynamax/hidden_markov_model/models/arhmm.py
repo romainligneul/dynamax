@@ -1,7 +1,9 @@
 import jax.numpy as jnp
 import jax.random as jr
-from jax import lax
-from jax.tree_util import tree_map
+from jax import lax, tree_map
+from jax.tree import structure as tree_structure
+from jax import tree_unflatten
+from jax import nn as jnn
 from jaxtyping import Float, Array
 from dynamax.hidden_markov_model.models.abstractions import HMM, HMMParameterSet, HMMPropertySet
 from dynamax.hidden_markov_model.models.initial import StandardHMMInitialState, ParamsStandardHMMInitialState
@@ -160,6 +162,26 @@ class LinearAutoregressiveHMM(HMM):
         params["transitions"], props["transitions"] = self.transition_component.initialize(key2, method=method, transition_matrix=transition_matrix)
         params["emissions"], props["emissions"] = self.emission_component.initialize(key3, method=method, emission_weights=emission_weights, emission_biases=emission_biases, emission_covariances=emission_covariances, emissions=emissions)
         return ParamsLinearAutoregressiveHMM(**params), ParamsLinearAutoregressiveHMM(**props)
+    
+    def update_params(self,
+                    prior_params: None,
+                    params: None,
+                    up_initial: float=1.0,
+                    up_transitions: float=1.0,
+                    up_emissions_weights: float=1.0,
+                    up_emissions_biases: float=1.0,
+                    up_emissions_covs: float=1.0
+        ) -> HMMParameterSet:
+        r"""Create fake HMMParameterSet constraining updates.
+            Can be used to control how much parameters are allowed to deviate from their prior values
+        """
+        emissions_treedef=tree_structure(params.emissions)
+        
+        return ParamsLinearAutoregressiveHMM(tree_map(lambda x, y: (x*(1.0-up_initial)+y*up_initial)/jnp.sum(x*(1.0-up_initial)+y*up_initial), prior_params.initial, params.initial),
+                                             tree_map(lambda x, y: (x*(1.0-up_transitions)+y*up_transitions)/jnp.sum(x*(1.0-up_transitions)+y*up_transitions,keepdims=True, axis=1), prior_params.transitions, params.transitions),
+                                             tree_unflatten(emissions_treedef, [params.emissions.weights*up_emissions_weights+prior_params.emissions.weights*(1-up_emissions_weights),
+                                                                                params.emissions.biases*up_emissions_biases+prior_params.emissions.biases*(1-up_emissions_biases),
+                                                                                params.emissions.covs*up_emissions_covs+prior_params.emissions.covs*(1-up_emissions_covs)]))
 
     def sample(self,
                params: HMMParameterSet,
