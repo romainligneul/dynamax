@@ -47,7 +47,7 @@ pip install dynamax[notebooks]      # Install with demo notebook dependencies
 To install the latest version of this fork:
 
 ``` {.console}
-git clone git@github.com:romainligneul/dynamax.git
+git clone https://github.com/romainligneul/dynamax.git
 cd dynamax
 pip install -e '.[dev]'
 ```
