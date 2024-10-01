@@ -44,10 +44,10 @@ pip install dynamax                 # Install dynamax and core dependencies, or
 pip install dynamax[notebooks]      # Install with demo notebook dependencies
 ```
 
-To install the latest development branch:
+To install the latest version of this fork:
 
 ``` {.console}
-pip install git+https://github.com/probml/dynamax.git
+pip install git+https://github.com/romainligneul/dynamax.git
 ```
 
 Finally, if you\'re a developer, you can install dynamax along with the
