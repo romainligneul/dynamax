@@ -37,7 +37,7 @@ for the parameters of an SSM, see https://jax-ml.github.io/bayeux/examples/dynam
 
 ## Installation and Testing
 
-To install the latest releast of dynamax from PyPi:
+To install the latest releast of official dynamax from PyPi:
 
 ``` {.console}
 pip install dynamax                 # Install dynamax and core dependencies, or
@@ -47,14 +47,7 @@ pip install dynamax[notebooks]      # Install with demo notebook dependencies
 To install the latest version of this fork:
 
 ``` {.console}
-pip install git+https://github.com/romainligneul/dynamax.git
-```
-
-Finally, if you\'re a developer, you can install dynamax along with the
-test and documentation dependencies with:
-
-``` {.console}
-git clone git@github.com:probml/dynamax.git
+git clone git@github.com:romainligneul/dynamax.git
 cd dynamax
 pip install -e '.[dev]'
 ```
